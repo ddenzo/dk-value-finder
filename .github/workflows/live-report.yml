@@ -1,0 +1,28 @@
+name: Live NFL value report
+
+on:
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Analyze live NFL odds
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python -m src.analyze
+      - name: Upload value report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfl-value-report
+          path: |
+            reports/nfl_value.csv
+            data/latest.json
+          if-no-files-found: error
+          retention-days: 7
