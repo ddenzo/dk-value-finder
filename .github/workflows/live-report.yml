@@ -17,12 +17,13 @@ jobs:
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python -m src.analyze
-      - name: Upload value report
+      - name: Upload value report and snapshot
         uses: actions/upload-artifact@v4
         with:
           name: nfl-value-report
           path: |
             reports/nfl_value.csv
+            history/*.csv
             data/latest.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
