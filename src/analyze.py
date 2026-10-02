@@ -106,7 +106,7 @@ def _crossed_key_numbers(start: float, end: float) -> list[int]:
 
 
 def wong_eligible_legs(rows: list[dict]) -> list[dict]:
-    """Find spread legs whose teaser move crosses both NFL key numbers 3 and 7."""
+    """Find 6-point classic Wong legs and 3-point legs that cross at least one key number."""
     legs = []
     for row in rows:
         if row["market"] != "spreads" or row["point"] is None:
@@ -115,10 +115,12 @@ def wong_eligible_legs(rows: list[dict]) -> list[dict]:
         for teaser_points in (3, 6):
             end = start + teaser_points
             crossed = _crossed_key_numbers(start, end)
-            # Classic Wong logic: require the teaser to cross both 3 and 7.
-            if crossed == [3, 7]:
+            # A 6-point classic Wong leg must cross both 3 and 7.
+            # A 3-point move cannot cross both, so retain legs that cross either key number.
+            eligible = crossed == [3, 7] if teaser_points == 6 else bool(crossed)
+            if eligible:
                 legs.append({**row, "teaser_points": teaser_points, "teased_point": end,
-                             "key_numbers_crossed": "3 and 7"})
+                             "key_numbers_crossed": " and ".join(map(str, crossed))})
     return sorted(legs, key=lambda r: (r["teaser_points"], -r["comparison_books"], r["consensus_dispersion"]))
 
 def _write_summary(rows: list[dict], usage: ApiUsage, games: int) -> None:
@@ -157,9 +159,9 @@ def _write_summary(rows: list[dict], usage: ApiUsage, games: int) -> None:
                 f"probability, with enough matching books to qualify under the current {row['classification']} rules.", ""
             ]
     lines += ["## 🧩 Wong-eligible teaser legs", "",
-              "> These are **structural teaser candidates**, not proven +EV bets. The current feed does not include the actual DraftKings teaser price.", ""]
+              "> **6-point legs** cross both 3 and 7. **3-point legs** cross at least one of those key numbers; they are not classic Wong teasers. These are structural candidates, not proven +EV bets, because the current feed does not include the actual DraftKings teaser price.", ""]
     if not teaser_legs:
-        lines += ["No 3-point or 6-point legs cross both key numbers 3 and 7 on this run.", ""]
+        lines += ["No qualifying teaser legs on this run.", ""]
     else:
         for leg in teaser_legs:
             lines += [
