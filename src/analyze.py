@@ -129,6 +129,7 @@ def _write_summary(rows: list[dict], usage: ApiUsage, games: int) -> None:
         return
     candidates = [r for r in rows if r["classification"] == "CANDIDATE"]
     watches = [r for r in rows if r["classification"] == "WATCH"]
+    teaser_legs = wong_eligible_legs(rows)
     remaining = "unknown" if usage.remaining is None else str(usage.remaining)
     last = "unknown" if usage.last is None else str(usage.last)
     lines = [
