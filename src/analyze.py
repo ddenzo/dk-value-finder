@@ -99,6 +99,28 @@ def _agreement(dispersion: float) -> str:
     return "Mixed"
 
 
+
+def _crossed_key_numbers(start: float, end: float) -> list[int]:
+    low, high = sorted((start, end))
+    return [key for key in (3, 7) if low < key < high]
+
+
+def wong_eligible_legs(rows: list[dict]) -> list[dict]:
+    """Find spread legs whose teaser move crosses both NFL key numbers 3 and 7."""
+    legs = []
+    for row in rows:
+        if row["market"] != "spreads" or row["point"] is None:
+            continue
+        start = float(row["point"])
+        for teaser_points in (3, 6):
+            end = start + teaser_points
+            crossed = _crossed_key_numbers(start, end)
+            # Classic Wong logic: require the teaser to cross both 3 and 7.
+            if crossed == [3, 7]:
+                legs.append({**row, "teaser_points": teaser_points, "teased_point": end,
+                             "key_numbers_crossed": "3 and 7"})
+    return sorted(legs, key=lambda r: (r["teaser_points"], -r["comparison_books"], r["consensus_dispersion"]))
+
 def _write_summary(rows: list[dict], usage: ApiUsage, games: int) -> None:
     path = os.getenv("GITHUB_STEP_SUMMARY")
     if not path:
@@ -133,6 +155,19 @@ def _write_summary(rows: list[dict], usage: ApiUsage, games: int) -> None:
                 f"- DraftKings price: **{tied}** among matching prices", "",
                 f"**Why flagged:** The broader market's median no-vig probability is above DraftKings' break-even "
                 f"probability, with enough matching books to qualify under the current {row['classification']} rules.", ""
+            ]
+    lines += ["## 🧩 Wong-eligible teaser legs", "",
+              "> These are **structural teaser candidates**, not proven +EV bets. The current feed does not include the actual DraftKings teaser price.", ""]
+    if not teaser_legs:
+        lines += ["No 3-point or 6-point legs cross both key numbers 3 and 7 on this run.", ""]
+    else:
+        for leg in teaser_legs:
+            lines += [
+                f"### {leg['teaser_points']}-point: {leg['selection']} {leg['point']:+g} → {leg['teased_point']:+g}",
+                f"**{leg['away_team']} @ {leg['home_team']}**", "",
+                f"- Crosses key numbers: **{leg['key_numbers_crossed']}**",
+                f"- Matching comparison books at original line: **{leg['comparison_books']}**",
+                f"- Original-line market agreement: **{_agreement(leg['consensus_dispersion'])}**", "",
             ]
     lines += ["---", "Full CSV and raw odds remain available under **Artifacts** for deeper review."]
     Path(path).write_text("\n".join(lines), encoding="utf-8")
